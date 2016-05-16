@@ -1,0 +1,7 @@
+{application, chicago_boss,
+ [{description, "DeviceNetwork Public Common Libraries"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {env, []},
+  {applications, [kernel, stdlib]}]}.
