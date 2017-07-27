@@ -7,7 +7,7 @@
 -export ([parse/1]).
 
 % Alas, so many Erlang HTTP Servers, and so little parsing of Multipart forms.
-% This file contains multipart form parsing logic that is shared by all 
+% This file contains multipart form parsing logic that is shared by all
 % request bridges.
 % Large portions of this file are from mochiweb_multipart.erl
 % Copyright 2007 Mochi Media, Inc., written by Bob Ippolito <bob@mochimedia.com>.
@@ -40,7 +40,7 @@
     filename,     % The name of the posted file
     mime_type,    % The mime type of the file
     size=0,       % The size of the part's value
-    needs_rn      % True if we should add a \r\n before the next write 
+    needs_rn      % True if we should add a \r\n before the next write
 }).
 
 -define (NEWLINE, "\r\n").
@@ -57,7 +57,7 @@ is_multipart_request(Req) ->
         _ -> false
     end.
 
-parse_multipart(Req) -> 
+parse_multipart(Req) ->
     try
         % Get the boundary...
         {_K, _V, Props} = parse_header(Req:header(content_type)),
@@ -74,19 +74,19 @@ parse_multipart(Req) ->
         Data = to_binary(Req:request_body()),
 
         % Create the state...
-        State = #state { req = Req, boundary = Boundary, length=Length, bytes_read = size(Data), parts = [] },	
+        State = #state { req = Req, boundary = Boundary, length=Length, bytes_read = size(Data), parts = [] },
         State1 = read_boundary(Data, State),
         % Respond with {ok, Params, Files}.
         {
             ok,
             [{Name, Value} || #part { name=Name, value=Value, filename=undefined } <- State1#state.parts],
-            [#uploaded_file { 
+            [#uploaded_file {
                 original_name=Filename,
-                temp_file=TempFile, 
-                size=Size 
+                temp_file=TempFile,
+                size=Size
             } || #part { filename=Filename, value={file, TempFile}, size=Size } <- State1#state.parts]
     }
-    catch 
+    catch
         throw : post_too_big -> {error, post_too_big};
         throw : {file_too_big, FileName} -> {error, {file_too_big, FileName}};
         Type : Message ->
@@ -123,8 +123,8 @@ update_part_with_header({"content-disposition", "form-data", Params}, Part) ->
     end,
     case proplists:get_value("filename", Params) of
         undefined -> Part1;
-        Filename -> 
-            Part1#part { 
+        Filename ->
+            Part1#part {
                 filename=Filename,
                 value = {file, get_tempfilename()}
             }
@@ -137,15 +137,15 @@ update_part_with_header(_, Part) -> Part.
 read_part_value(Data, Part, State = #state { boundary=Boundary }) ->
     {Line, Data1, Part1, State1} = get_next_line(Data, Part, State),
     case interpret_line(Line, Boundary) of
-        start_next_part -> 
+        start_next_part ->
             % Finalize the write, then start the next part.
             State2 = update_state_with_part(Part1, State1),
             read_part_header(Data1, #part {}, State2);
         A when A == start_value orelse A == continue ->
-            % Write the line, then continue...	
+            % Write the line, then continue...
             Part2 = update_part_with_value(Line, true, Part1),
             read_part_value(Data1, Part2, State1);
-        eof -> 
+        eof ->
             update_state_with_part(Part1, State1)
     end.
 
@@ -157,7 +157,7 @@ update_part_with_value(Data, IsLine, Part = #part { filename=FileName, value={fi
         true ->
             file:delete(TempFile),
             throw({file_too_big, FileName});
-        false -> 
+        false ->
             continue
     end,
 
@@ -167,7 +167,7 @@ update_part_with_value(Data, IsLine, Part = #part { filename=FileName, value={fi
     ok = file:write(FD, Prefix),
     ok = file:write(FD, Data),
     ok = file:close(FD),
-    Part#part { size=NewSize, needs_rn=IsLine };	
+    Part#part { size=NewSize, needs_rn=IsLine };
 
 update_part_with_value(Data, IsLine, Part = #part { value=Value, size=Size, needs_rn=NeedsRN }) ->
     {Prefix, NewSize} = get_prefix_and_newsize(NeedsRN, Size, Data),
@@ -194,7 +194,7 @@ get_next_line(<<C, Data/binary>>, Acc, Part, State) -> get_next_line(Data, <<Acc
 get_next_line(Data, Acc, Part, State) when Data == undefined orelse Data == <<>> ->
     {Data1, State1} = read_chunk(State),
 
-    % We don't want Acc to grow too big, so if we have more than ?CHUNKSIZE 
+    % We don't want Acc to grow too big, so if we have more than ?CHUNKSIZE
     % data already read, then flush it to the current part.
     {Acc1, Part1} = case Part /= undefined andalso size(Acc) > ?CHUNKSIZE of
         true -> {<<>>, update_part_with_value(Acc, false, Part)};
@@ -216,13 +216,13 @@ read_chunk(State = #state { req=Req, length=Length, bytes_read=BytesRead }) ->
 
     {Data, State#state { bytes_read=NewBytesRead }}.
 
-interpret_line(Line, Boundary) -> 
-    if 
+interpret_line(Line, Boundary) ->
+    if
         Line == <<"--", Boundary/binary, "--">> -> eof;
         Line == <<"--", Boundary/binary>> -> start_next_part;
         Line == <<>>   -> start_value;
         true             -> continue
-    end. 
+    end.
 
 
 parse_header(B) when is_binary(B) -> parse_header(binary_to_list(B));
@@ -239,7 +239,7 @@ parse_keyvalue(Char, S) ->
         0   -> {S, ""};
         Pos -> {string:substr(S, 1, Pos - 1), string:substr(S, Pos + 1)}
     end,
-    {string:to_lower(string:strip(Key)), 
+    {string:to_lower(string:strip(Key)),
         unquote_header(string:strip(Value))}.
 
 get_tempfilename() ->
@@ -247,10 +247,10 @@ get_tempfilename() ->
         {ok, [[Value]]} -> Value;
         _ -> ?SCRATCH_DIR
     end,
-    Parts = [integer_to_list(X) || X <- binary_to_list(erlang:md5(term_to_binary(erlang:now())))],
+    Parts = [integer_to_list(X) || X <- binary_to_list(erlang:md5(term_to_binary(erlang:timestamp())))],
     filename:join([Dir, string:join(Parts, "-")]).
 
-get_max_post_size() -> 
+get_max_post_size() ->
     Size = case init:get_argument(simple_bridge_max_post_size) of
         {ok, [[Value]]} -> list_to_integer(Value);
         _ -> ?MAX_POST_SIZE

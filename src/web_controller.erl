@@ -227,7 +227,7 @@ handle_request(Req, RequestMod, ResponseMod) ->
 							AppInfo = boss_web:application_info(App),
 %% 					io:format("app info is:~p~n", [AppInfo]),
 							RouterPid = boss_web:router_pid(App),
-							StartTime = erlang:now(),
+							StartTime = erlang:timestamp(),
 							{StatusCode, Headers, Payload} = process_request(AppInfo#boss_app_info{router_pid = RouterPid}, Request, Url),
 							Time = dn_misc:time_diff(StartTime),
 							ErrorFormat = "~s ~s ~p ~pms",
@@ -362,12 +362,12 @@ load_and_execute({Controller, _, _} = Location, AppInfo, Req) ->
 %%     end;
 %% load_and_execute(development, {Controller, _, _} = Location, AppInfo, Req, SessionID) ->
 %%     case boss_load:load_mail_controllers() of
-%%         {ok, _} -> 
+%%         {ok, _} ->
 %%             case boss_load:load_libraries() of
 %%                 {ok, _} ->
 %%                     case boss_load:load_web_controllers() of
 %%                         {ok, Controllers} ->
-%%                             case lists:member(boss_files:web_controller(AppInfo#boss_app_info.application, Controller), 
+%%                             case lists:member(boss_files:web_controller(AppInfo#boss_app_info.application, Controller),
 %%                                     lists:map(fun atom_to_list/1, Controllers)) of
 %%                                 true ->
 %%                                     case boss_load:load_models() of
@@ -390,7 +390,7 @@ load_and_execute({Controller, _, _} = Location, AppInfo, Req) ->
 %%     end.
 
 %% render_errors(ErrorList, AppInfo, Req) ->
-%%     case boss_html_error_template:render([{errors, ErrorList}, {request, Req}, 
+%%     case boss_html_error_template:render([{errors, ErrorList}, {request, Req},
 %%                 {application, AppInfo#boss_app_info.application}]) of
 %%         {ok, Payload} ->
 %%             {ok, Payload, []};
@@ -567,13 +567,13 @@ render_view({Controller, Template, _}, AppInfo, Req, Variables, Headers) ->
 %%     BossFlash = boss_flash:get_and_clear(SessionID),
 %%     case LoadResult of
 %%         {ok, Module} ->
-%%             {Lang, TranslationFun} = choose_translation_fun(AppInfo#boss_app_info.translator_pid, 
-%%                 Module:translatable_strings(), Req:header(accept_language), 
+%%             {Lang, TranslationFun} = choose_translation_fun(AppInfo#boss_app_info.translator_pid,
+%%                 Module:translatable_strings(), Req:header(accept_language),
 %%                 proplists:get_value("Content-Language", Headers)),
-%%             case Module:render(lists:merge([{"_lang", Lang}, 
-%%                             {"_base_url", AppInfo#boss_app_info.base_url}|Variables], BossFlash), 
+%%             case Module:render(lists:merge([{"_lang", Lang},
+%%                             {"_base_url", AppInfo#boss_app_info.base_url}|Variables], BossFlash),
 %%                     [{translation_fun, TranslationFun}, {locale, Lang},
-%%                         {custom_tags_context, [{controller, Controller}, 
+%%                         {custom_tags_context, [{controller, Controller},
 %%                                 {application, atom_to_list(AppInfo#boss_app_info.application)},
 %%                                 {action, Template},
 %%                                 {router_pid, AppInfo#boss_app_info.router_pid}]}]) of
@@ -586,7 +586,7 @@ render_view({Controller, Template, _}, AppInfo, Req, Variables, Headers) ->
 %%             {not_found, io_lib:format("The requested template (~p) was not found.", [ViewPath]) };
 %%         {error, {File, [{0, _Module, "Failed to read file"}]}} ->
 %%             {not_found, io_lib:format("The requested template (~p) was not found.", [File]) };
-%%         {error, Error}-> 
+%%         {error, Error}->
 %%             render_errors([not_found], AppInfo, Req).
 %%     end.
 
@@ -609,7 +609,7 @@ render_view({Controller, Template, _}, AppInfo, Req, Variables, Headers) ->
 %%     end;
 %% choose_translation_fun(TranslatorPid, _, _, ContentLanguage) ->
 %%     {ContentLanguage, boss_translator:fun_for(TranslatorPid, ContentLanguage)}.
-%% 
+%%
 %% choose_language_from_qvalues(TranslatorPid, Strings, QValues) ->
 %%     % calculating translation coverage is costly so we start with the most preferred
 %%     % languages and work our way down
@@ -625,14 +625,14 @@ render_view({Controller, Template, _}, AppInfo, Req, Variables, Headers) ->
 %%                 {ThisLang, ThisQValue}; % translation coverage is 100%
 %%             ({ThisLang, ThisQValue}, {BestLang, BestTranslationScore}) ->
 %%                 TranslationCoverage = translation_coverage(Strings, ThisLang, TranslatorPid),
-%%                 TranslationScore = ThisQValue * TranslationCoverage + 
+%%                 TranslationScore = ThisQValue * TranslationCoverage +
 %%                                     AssumedLocaleQValue * (1-TranslationCoverage),
 %%                 case TranslationScore > BestTranslationScore of
 %%                     true -> {ThisLang, TranslationScore};
 %%                     false -> {BestLang, BestTranslationScore}
 %%                 end
 %%         end, {"xx-bork", 0.0}, SortedQValues).
-%% 
+%%
 %% translation_coverage([], _, _) ->
 %%     0.0;
 %% translation_coverage(Strings, Locale, TranslatorPid) ->
@@ -686,7 +686,7 @@ code_change(OldVsn, State, Extra) ->
 %% 			[{status, 406},
 %% 			 {header, {content_type,"text/html"}},
 %% 			 {ehtml, [{head, [], [{title, [], Error}]},
-%% 			   {body, [], [{h1, [], Error}, 
+%% 			   {body, [], [{h1, [], Error},
 %% 						   {p, [], Msg}]
 %% 			   }
 %% 					 ]
