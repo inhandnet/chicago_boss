@@ -6,25 +6,44 @@
 %% 		 web_controller/2, routes_file/1]).
 
 
-root_dir() -> filename:absname(""). %filename:join([filename:dirname(code:which(?MODULE)), ".."]).
-root_src_dir() -> "src".
-root_priv_dir(App) ->
-	filename:join([root_dir(), "priv"]).
+root_dir(undefined) -> root_dir();
+root_dir(App) ->
+  case code:priv_dir(App) of
+    {error, _} -> "";
+    Val -> filename:dirname(Val)
+  end.
+root_dir() ->
+  case application:get_application() of
+    {ok, App} ->
+      root_dir(App);
+    {error, _} -> ""
+  end. %filename:join([filename:dirname(code:which(?MODULE)), ".."]).
+root_src_dir() -> filename:join([root_dir(), "src"]).
+root_priv_dir() -> root_priv_dir(undefined).
+root_priv_dir(App) -> filename:join([root_dir(App), "priv"]).
 
+
+-spec load_app_envs() -> atom() | {error, term()}.
 load_app_envs() ->
-	%% content of appname.config file: {appname1, [{key1, value1}, {...}]}, {appname2, [{...}]}
-%% 	ConfigFileName = lists:concat([atom_to_list(App), ".config"]),
-	Dir = filename:absname(""),
-	ConfigFileName = "priv/sys.config",
-	FilePath = filename:join([Dir, ConfigFileName]),
-	{ok, ConfigList} = file:consult(FilePath),
-	InitList = proplists:get_value(init, ConfigList),
-	App = proplists:get_value(app, InitList),
-
-	ValueList = proplists:get_value(web, ConfigList),
-
-	[application:set_env(App, Key, Value) || {Key, Value} <- ValueList],
-	App.
+  File = filename:join(root_priv_dir(), "sys.config"),
+  case file:consult(File) of
+    {ok, Terms} ->
+      InitList = proplists:get_value(init, Terms),
+      App = proplists:get_value(app, InitList),
+      ValueList = proplists:get_value(web, Terms),
+      [application:set_env(App, Key, Value) || {Key, Value} <- ValueList],
+      App;
+    {error, Reason} ->
+      case application:get_env(init) of
+        {ok, Terms} ->
+          case proplists:get_value(app, Terms) of
+            undefined ->
+              {error, bad_init_env};
+            App -> App
+          end;
+        undefined -> {error, Reason}
+      end
+  end.
 
 %% 	lists:foldl(fun ({_AppConfigName, ValueList}, _Acc) ->
 %% %% 						 io:format("app:~p, valuelist:~p~n", [App, ValueList]),
