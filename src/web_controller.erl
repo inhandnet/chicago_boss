@@ -49,41 +49,41 @@ start_link() ->
 %% --------------------------------------------------------------------
 init([]) ->
 	%% if app count > 1, we should execute load_app_envs() several times.
-	AppAtom = boss_files:load_app_envs(),
-	Ip = get_env(AppAtom, mochiweb_ip, "0.0.0.0"),
-	case dn_config:get(?PARAM_NAME_PORT) of
-		undefined ->
-			Port = get_env(AppAtom, port, "8088");
-		Port ->
-			ok
-	end,
-	Config = [{ip, Ip}, {port, Port}],
-	%% only support one application currently
-	Applications = get_env(AppAtom, applications, []),
-%% 	?DEBUG("applications:~p~n", [Applications]),
-	AppInfoList =
-		lists:map(fun(AppName) ->
-%% 						  application:start(AppName),	% application has been started, one app! self
-			%% AppName is atom type
-			BaseURL = get_env(AppName, base_url, "/"),
-			ControllerList = boss_files:web_controller_list(AppName),
-			{ok, RouterSupPid} = boss_router:start([{application, AppName},
-				{controllers, ControllerList}]),
-			%% atom_to_list? -> handle result from boss_router_contrller is list,
-			%% for match usage in process_request, this appname must be list.
-			#boss_app_info{application = AppName,
-			router_sup_pid = RouterSupPid,
-			base_url = (if BaseURL =:= "/" -> ""; true -> BaseURL end),
-			controller_modules = ControllerList
-			}
-		end, Applications),
-	ServerConfig =
-		[{loop, fun(Req) ->
-			web_controller:handle_request(Req, mochiweb_request_bridge, mochiweb_response_bridge)
-		end} | Config],
-%% 	?DEBUG("app info list:~p~n", [AppInfoList]),
-	Pid = mochiweb_http:start(ServerConfig),
-	{ok, #state{applications = AppInfoList, http_pid = Pid}}.
+  case boss_files:load_app_envs() of
+    {error, Reason} ->
+      lager:error("Failed loading web env: ~p", [Reason]),
+      {stop, Reason};
+    App ->
+      Ip = get_env(App, mochiweb_ip, "0.0.0.0"),
+      Port = dn_config:get(?PARAM_NAME_PORT, get_env(App, port, "8080")),
+      Config = [{ip, Ip}, {port, Port}],
+      %% only support one application currently
+      Applications = get_env(App, applications, []),
+      %% 	?DEBUG("applications:~p~n", [Applications]),
+      AppInfoList =
+        lists:map(fun(AppName) ->
+          %% application:start(AppName),	% application has been started, one app! self
+          %% AppName is atom type
+          BaseURL = get_env(AppName, base_url, "/"),
+          ControllerList = boss_files:web_controller_list(AppName),
+          {ok, RouterSupPid} = boss_router:start([{application, AppName},
+            {controllers, ControllerList}]),
+          %% atom_to_list? -> handle result from boss_router_contrller is list,
+          %% for match usage in process_request, this appname must be list.
+          #boss_app_info{application = AppName,
+            router_sup_pid = RouterSupPid,
+            base_url = (if BaseURL =:= "/" -> ""; true -> BaseURL end),
+            controller_modules = ControllerList
+          }
+        end, Applications),
+      ServerConfig =
+        [{loop, fun(Req) ->
+          web_controller:handle_request(Req, mochiweb_request_bridge, mochiweb_response_bridge)
+        end} | Config],
+      %% 	?DEBUG("app info list:~p~n", [AppInfoList]),
+      Pid = mochiweb_http:start(ServerConfig),
+      {ok, #state{applications = AppInfoList, http_pid = Pid}}
+  end.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
